@@ -61,7 +61,7 @@ namespace MailRat
             try
             {
                 //登入
-                client.Connect("", 993, SecureSocketOptions.SslOnConnect);
+                client.Connect("mail.asiavista.com.tw", 993, SecureSocketOptions.SslOnConnect);
                 client.Authenticate(emailaccount[0], passwordd);
             }
             catch (Exception ex)

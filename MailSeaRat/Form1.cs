@@ -24,22 +24,26 @@ namespace MailSeaRat
     public partial class MailSeaRat : Form
     {
         private System.Threading.Timer timer;
+        private System.Threading.Timer timer2;
+        private readonly object timerLock = new object();
+        private int count = 0;
+        private bool Status = false;
 
         public MailSeaRat()
         {
             InitializeComponent();
 
-            timer = new System.Threading.Timer(TimerCallback, null, 0, 1000);
+            //顯示執行次數
+            ShowCount.Text = $"執行次數：{count}";
         }
 
         /// <summary>
         /// 郵件搜尋和處裡
         /// </summary>
-        private void SearchAndDecrypt()
+        private string SearchAndDecrypt()
         {
-            //清空顯示
-            ShowOutput.Visible = false;
-            ShowOutput.Text = string.Empty;
+            ShowOutput.Invoke((MethodInvoker)delegate { ShowOutput.Visible = false; });
+            ShowOutput.Invoke((MethodInvoker)delegate { ShowOutput.Text = string.Empty; });
 
             //連結變數
             string email = ConfigurationManager.AppSettings["EmailAccount"];
@@ -59,7 +63,7 @@ namespace MailSeaRat
             string[] emailaccount = email.Split('@');
 
             //登入
-            client.Connect("", 993, SecureSocketOptions.SslOnConnect);
+            client.Connect("mail.asiavista.com.tw", 993, SecureSocketOptions.SslOnConnect);
             client.Authenticate(emailaccount[0], passwordd);
 
             // 取得收件匣
@@ -89,10 +93,6 @@ namespace MailSeaRat
                     //檢查是否有檔案進入處理
                     bool check = false;
 
-                    ShowOutput.Visible = true;
-                    ShowOutput.Text = "Done";
-                    return;
-
                     #region 檢查並處理郵件中的附件檔案
                     //再次確認信件的日期和時間
                     //mimeMessage.Date.LocalDateTime > TargetDateTime
@@ -101,7 +101,7 @@ namespace MailSeaRat
                         // 迭代所有附件
                         foreach (var attachment in attachments)
                         {
-                            //PDF、Excel、Word能不能開啟
+                            //PDF、Excel、Word、ZIP能不能開啟
                             bool state = false;
 
                             // 判斷附件是否為PDF、Excel、Word、zip
@@ -154,9 +154,8 @@ namespace MailSeaRat
                                             }
                                             catch (Exception ex)
                                             {
-                                                ShowOutput.Text = "解密密碼錯誤";
                                                 Directory.Delete(newFolderPath, true);
-                                                return;
+                                                return "解密密碼錯誤";
                                             }
                                         }
                                     }
@@ -210,9 +209,8 @@ namespace MailSeaRat
                                             }
                                             catch (Exception ex)
                                             {
-                                                ShowOutput.Text = "解密密碼錯誤";
                                                 Directory.Delete(newFolderPath, true);
-                                                return;
+                                                return "解密密碼錯誤";
                                             }
                                         }
                                     }
@@ -267,9 +265,8 @@ namespace MailSeaRat
                                             }
                                             catch (Exception ex)
                                             {
-                                                ShowOutput.Text = "解密密碼錯誤";
                                                 Directory.Delete(newFolderPath, true);
-                                                return;
+                                                return "解密密碼錯誤";
                                             }
                                         }
                                     }
@@ -315,9 +312,8 @@ namespace MailSeaRat
                                             }
                                             catch (Exception ex)
                                             {
-                                                ShowOutput.Text = "解密密碼錯誤";
                                                 Directory.Delete(newFolderPath, true);
-                                                return;
+                                                return "解密密碼錯誤";
                                             }
                                         }
                                         else File.Delete(filePath);
@@ -330,6 +326,17 @@ namespace MailSeaRat
                         if (check)
                         {
                             //取得Temp資料夾下的所有檔案
+                            string[] PrefilePaths = Directory.GetFiles(newFolderPath);
+
+                            //檔案改名
+                            foreach (string filePath in PrefilePaths)
+                            {
+                                string fileName = Path.GetFileName(filePath);
+                                string newfileName = fileName.Replace("Decrypted-", "");
+                                string newFilePath = Path.Combine(newFolderPath, newfileName);
+                                File.Move(filePath, newFilePath);
+                            }
+
                             string[] filePaths = Directory.GetFiles(newFolderPath);
 
                             //將所有檔案都用FileStream開啟
@@ -378,8 +385,7 @@ namespace MailSeaRat
                                 }
                                 catch (Exception ex)
                                 {
-                                    ShowOutput.Text = "檔案刪除失敗，請手動刪除";
-                                    return;
+                                    return "檔案刪除失敗，請手動刪除";
                                 }
                             }
                         }
@@ -388,8 +394,7 @@ namespace MailSeaRat
                 }
                 catch (Exception ex)
                 {
-                    ShowOutput.Text = "解密失敗";
-                    return;
+                    return "解密失敗";
                 }
             }
 
@@ -402,12 +407,12 @@ namespace MailSeaRat
             // 斷開與郵件伺服器的連線
             client.Disconnect(true);
 
-            ShowOutput.Visible = true;
-            ShowOutput.Text = "解密完成";
-
             //刪除用來暫存PDF的資料夾
             if (Directory.Exists(newFolderPath)) Directory.Delete(newFolderPath, true);
 
+            Status = true;
+
+            return "";
         }
 
         /// <summary>
@@ -559,6 +564,114 @@ namespace MailSeaRat
             {
                 ShowTime.Text = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
             }));
+        }
+
+        /// <summary>
+        /// 執行解密程序
+        /// </summary>
+        /// <param name="state"></param>
+        private void TimerCallbackMain(object state)
+        {
+            lock (timerLock) { timer2.Change(Timeout.Infinite, Timeout.Infinite); }
+
+            string Result = SearchAndDecrypt();
+            count++;
+
+            ShowCount.Invoke((MethodInvoker)delegate { ShowCount.Text = $"執行次數：{count}"; });
+
+            ShowOutput.Invoke((MethodInvoker)delegate { ShowOutput.Visible = true; });
+
+            if (Status)
+            {
+                ShowOutput.Invoke((MethodInvoker)delegate { ShowOutput.Text = "Success"; });
+
+                lock (timerLock) { timer2.Change(10000, 2000); }
+            }
+            else
+            {
+                ShowOutput.Invoke((MethodInvoker)delegate { ShowOutput.Text = "Error：" + Result; });
+                notifyIcon1.Tag = string.Empty;
+                notifyIcon1.ShowBalloonTip(2000, this.Text, "程序錯誤", ToolTipIcon.Info);
+            }
+        }
+
+        /// <summary>
+        /// 畫面控制
+        /// </summary>
+        private void ShowForm()
+        {
+            if (this.WindowState == FormWindowState.Minimized)
+            {
+                //如果目前是縮小狀態，才要回覆成一般大小的視窗
+                this.Show();
+                this.WindowState = FormWindowState.Normal;
+            }
+            // Activate the form.
+            this.Activate();
+            this.Focus();
+        }
+
+        /// <summary>
+        /// 關閉事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.WindowState = FormWindowState.Minimized;
+            Close();
+        }
+
+        private void notifyIcon1_DoubleClick(object sender, EventArgs e)
+        {
+            ShowForm();
+        }
+
+        private void notifyIcon1_BalloonTipClicked(object sender, EventArgs e)
+        {
+            ShowForm();
+        }
+
+        /// <summary>
+        /// 縮小視窗
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void MailSeaRat_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (this.WindowState != FormWindowState.Minimized)
+            {
+                e.Cancel = true;
+                this.WindowState = FormWindowState.Minimized;
+                notifyIcon1.Tag = string.Empty;
+                notifyIcon1.ShowBalloonTip(2000, this.Text, "解密程序執行中。", ToolTipIcon.Info);
+            }
+        }
+
+        /// <summary>
+        /// 重新啟動解密功能
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Reboot_Click(object sender, EventArgs e)
+        {
+            ShowOutput.Text = "重新啟動。。。";
+
+            Thread.Sleep(3000);
+
+            timer2 = new System.Threading.Timer(TimerCallbackMain, null, 0, 20000);
+        }
+
+        /// <summary>
+        /// 啟動Timer事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void MailSeaRat_Load(object sender, EventArgs e)
+        {
+            timer = new System.Threading.Timer(TimerCallback, null, 0, 1000);
+
+            timer2 = new System.Threading.Timer(TimerCallbackMain, null, 0, 20000);
         }
     }
 }
