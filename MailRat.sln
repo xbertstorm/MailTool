@@ -5,6 +5,8 @@ VisualStudioVersion = 17.5.33502.453
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailRat", "MailRat\MailRat.csproj", "{7F540DEA-B8DE-47EE-8264-482E9CAAED79}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailSeaRat", "MailSeaRat\MailSeaRat.csproj", "{17A7221F-74F2-47A7-B704-E37BB45A5E4D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{7F540DEA-B8DE-47EE-8264-482E9CAAED79}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7F540DEA-B8DE-47EE-8264-482E9CAAED79}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7F540DEA-B8DE-47EE-8264-482E9CAAED79}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17A7221F-74F2-47A7-B704-E37BB45A5E4D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17A7221F-74F2-47A7-B704-E37BB45A5E4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17A7221F-74F2-47A7-B704-E37BB45A5E4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17A7221F-74F2-47A7-B704-E37BB45A5E4D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

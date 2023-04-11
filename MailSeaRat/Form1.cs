@@ -17,34 +17,34 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Threading;
 
-namespace MailRat
+namespace MailSeaRat
 {
-    public partial class Form1 : Form
+    public partial class MailSeaRat : Form
     {
-        public Form1()
+        private System.Threading.Timer timer;
+
+        public MailSeaRat()
         {
             InitializeComponent();
+
+            timer = new System.Threading.Timer(TimerCallback, null, 0, 1000);
         }
 
         /// <summary>
-        /// 郵件搜尋
+        /// 郵件搜尋和處裡
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Decrypt_Click(object sender, EventArgs e)
+        private void SearchAndDecrypt()
         {
             //清空顯示
             ShowOutput.Visible = false;
             ShowOutput.Text = string.Empty;
 
-            //檢查輸入欄位是否都有資料
-            CheckInput();
-
             //連結變數
-            string email = EmailAccount.Text;
-            string passwordd = Password.Text;
-            string filepassword = PDFPassword.Text;
+            string email = ConfigurationManager.AppSettings["EmailAccount"];
+            string passwordd = ConfigurationManager.AppSettings["EmailPassword"];
+            string filepassword = ConfigurationManager.AppSettings["DecryptPassword"];
 
             //從app.Config提取目標時間，只有在這個時間之後收到的郵件才會進行判斷
             DateTime TargetDateTime = DateTime.Parse(ConfigurationManager.AppSettings["SetDateTime"]);
@@ -58,17 +58,9 @@ namespace MailRat
             var client = new ImapClient();
             string[] emailaccount = email.Split('@');
 
-            try
-            {
-                //登入
-                client.Connect("", 993, SecureSocketOptions.SslOnConnect);
-                client.Authenticate(emailaccount[0], passwordd);
-            }
-            catch (Exception ex)
-            {
-                ShowOutput.Text = "帳號or密碼錯誤";
-                return;
-            }
+            //登入
+            client.Connect("", 993, SecureSocketOptions.SslOnConnect);
+            client.Authenticate(emailaccount[0], passwordd);
 
             // 取得收件匣
             var inbox = client.Inbox;
@@ -96,6 +88,10 @@ namespace MailRat
 
                     //檢查是否有檔案進入處理
                     bool check = false;
+
+                    ShowOutput.Visible = true;
+                    ShowOutput.Text = "Done";
+                    return;
 
                     #region 檢查並處理郵件中的附件檔案
                     //再次確認信件的日期和時間
@@ -406,39 +402,12 @@ namespace MailRat
             // 斷開與郵件伺服器的連線
             client.Disconnect(true);
 
-            //清空畫面
-            EmailAccount.Text = string.Empty;
-            Password.Text = string.Empty;
-            PDFPassword.Text = string.Empty;
             ShowOutput.Visible = true;
             ShowOutput.Text = "解密完成";
 
             //刪除用來暫存PDF的資料夾
             if (Directory.Exists(newFolderPath)) Directory.Delete(newFolderPath, true);
-        }
 
-        /// <summary>
-        /// 檢查三個接收控制項是否都有輸入
-        /// </summary>
-        private void CheckInput()
-        {
-            if (string.IsNullOrWhiteSpace(EmailAccount.Text))
-            {
-                MessageBox.Show("請輸入帳號。");
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(Password.Text))
-            {
-                MessageBox.Show("請輸入密碼。");
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(PDFPassword.Text))
-            {
-                MessageBox.Show("請輸入解密密碼。");
-                return;
-            }
         }
 
         /// <summary>
@@ -577,6 +546,19 @@ namespace MailRat
             }
             //刪除資料夾，避免後面抓得出問題
             if (Directory.Exists(processZIP)) Directory.Delete(processZIP, true);
+        }
+
+        /// <summary>
+        /// 更新時間顯示
+        /// </summary>
+        /// <param name="state"></param>
+        private void TimerCallback(object state)
+        {
+            // 更新Label上的時間
+            Invoke(new System.Action(() =>
+            {
+                ShowTime.Text = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+            }));
         }
     }
 }
