@@ -366,7 +366,7 @@ namespace MailRat
                             //寫入郵件
                             inbox.Replace(message, mimeMessage);
 
-                            //釋放空間
+                            //釋放FileStream占用的空間
                             foreach (var progress in fileStreams)
                             {
                                 progress.Close();
